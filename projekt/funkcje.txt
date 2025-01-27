@@ -1,0 +1,60 @@
+CREATE OR REPLACE FUNCTION najpopularniejsze_gry(
+    p_liczba_wynikow IN NUMBER DEFAULT 5
+) RETURN SYS_REFCURSOR IS
+    v_cursor SYS_REFCURSOR;
+BEGIN
+    OPEN v_cursor FOR
+    SELECT g.tytul, COUNT(w.wypozyczenie_id) AS liczba_wypozyczen
+    FROM Gry g
+    JOIN Wypozyczenia w ON g.gra_id = w.gra_id
+    GROUP BY g.tytul
+    ORDER BY liczba_wypozyczen DESC
+    FETCH FIRST p_liczba_wynikow ROWS ONLY;
+
+    RETURN v_cursor;
+END;
+/
+
+CREATE OR REPLACE FUNCTION znajdz_gry_po_tytule(
+    p_fragment IN VARCHAR2
+) RETURN SYS_REFCURSOR IS
+    v_cursor SYS_REFCURSOR;
+BEGIN
+    OPEN v_cursor FOR
+    SELECT gra_id, tytul, gatunek, wydawca, liczba_graczy, czas_rozgrywki, status
+    FROM Gry
+    WHERE LOWER(tytul) LIKE '%' || LOWER(p_fragment) || '%'
+    ORDER BY tytul;
+
+    RETURN v_cursor;
+END;
+/
+
+
+# testy jakieś takie na przykład
+DECLARE
+    v_cursor SYS_REFCURSOR;
+    v_tytul VARCHAR2(50);
+    v_liczba_wypozyczen NUMBER;
+BEGIN
+    v_cursor := najpopularniejsze_gry(3);  -- 5 najpopularniejszych gier
+
+    LOOP
+        FETCH v_cursor INTO v_tytul, v_liczba_wypozyczen;
+        EXIT WHEN v_cursor%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE('Tytuł: ' || v_tytul || ', Liczba wypożyczeń: ' || v_liczba_wypozyczen);
+    END LOOP;
+
+    CLOSE v_cursor;
+END;
+/
+
+
+VARIABLE wynik REFCURSOR;
+
+BEGIN
+    :wynik := znajdz_gry_po_tytule('Car');
+END;
+/
+
+PRINT wynik;

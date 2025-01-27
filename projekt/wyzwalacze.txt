@@ -1,0 +1,79 @@
+CREATE OR REPLACE TRIGGER loguj_zmiany_gry
+AFTER INSERT OR UPDATE OR DELETE ON Gry
+FOR EACH ROW
+DECLARE
+    operacja VARCHAR2(50);
+BEGIN
+    IF INSERTING THEN
+        operacja := 'INSERT';
+    ELSIF UPDATING THEN
+        operacja := 'UPDATE';
+    ELSIF DELETING THEN
+        operacja := 'DELETE';
+    END IF;
+
+    INSERT INTO Logi (operacja, szczegoly)
+    VALUES (operacja, 'ID gry: ' || :OLD.gra_id || ', Tytuł: ' || :OLD.tytul);
+END;
+/
+
+CREATE OR REPLACE TRIGGER archiwizuj_gre
+BEFORE UPDATE OR DELETE ON Gry
+FOR EACH ROW
+BEGIN
+    IF UPDATING THEN
+        INSERT INTO Gry_Archiwum (
+            gra_id, tytul, gatunek, wydawca, liczba_graczy, czas_rozgrywki, status, data_operacji, typ_operacji
+        ) VALUES (
+            :OLD.gra_id, :OLD.tytul, :OLD.gatunek, :OLD.wydawca,
+            :OLD.liczba_graczy, :OLD.czas_rozgrywki, :OLD.status, SYSDATE, 'MODYFIKACJA'
+        );
+    END IF;
+
+    IF DELETING THEN
+        INSERT INTO Gry_Archiwum (
+            gra_id, tytul, gatunek, wydawca, liczba_graczy, czas_rozgrywki, status, data_operacji, typ_operacji
+        ) VALUES (
+            :OLD.gra_id, :OLD.tytul, :OLD.gatunek, :OLD.wydawca,
+            :OLD.liczba_graczy, :OLD.czas_rozgrywki, :OLD.status, SYSDATE, 'USUNIECIE'
+        );
+    END IF;
+END;
+/
+
+CREATE OR REPLACE TRIGGER aktualizuj_status_gry
+AFTER UPDATE OR INSERT ON Wypozyczenia
+FOR EACH ROW
+BEGIN
+    IF :NEW.data_do < SYSDATE THEN
+        UPDATE Gry
+        SET status = 'dostepna'
+        WHERE gra_id = :NEW.gra_id AND status != 'dostepna';
+    END IF;
+END;
+/
+
+CREATE OR REPLACE TRIGGER weryfikuj_dane_uzytkownikow
+BEFORE INSERT OR UPDATE ON Uzytkownicy
+FOR EACH ROW
+BEGIN
+    IF :NEW.imie IS NULL OR LENGTH(:NEW.imie) < 2 OR NOT REGEXP_LIKE(:NEW.imie, '^[A-Z][a-z]+$') THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Imię jest nieprawidłowe. Powinno składać się wyłącznie z liter, zaczynać wielką literą i mieć co najmniej 2 znaki.');
+    END IF;
+
+    IF :NEW.nazwisko IS NULL OR LENGTH(:NEW.nazwisko) < 2 OR NOT REGEXP_LIKE(:NEW.nazwisko, '^[A-Z][a-z]+$') THEN
+        RAISE_APPLICATION_ERROR(-20002, 'Nazwisko jest nieprawidłowe. Powinno składać się wyłącznie z liter, zaczynać wielką literą i mieć co najmniej 2 znaki.');
+    END IF;
+
+    IF :NEW.email IS NULL OR NOT REGEXP_LIKE(:NEW.email, '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$') THEN
+        RAISE_APPLICATION_ERROR(-20003, 'Adres email jest nieprawidłowy. Podaj prawidłowy adres e-mail w formacie nazwa@domena.tld.');
+    END IF;
+
+    IF :NEW.nr_telefonu IS NULL OR NOT REGEXP_LIKE(:NEW.nr_telefonu, '^\d{9}$') THEN
+        RAISE_APPLICATION_ERROR(-20004, 'Numer telefonu jest nieprawidłowy. Powinien składać się z dokładnie 9 cyfr.');
+    END IF;
+END;
+/
+
+UPDATE GRY SET STATUS='uszkodzona' WHERE gra_id = 26;
+INSERT INTO Uzytkownicy (imie, nazwisko, email, nr_telefonu) VALUES ('Jan', 'Kowalski', 'jan.kowalski@com', '123456789');

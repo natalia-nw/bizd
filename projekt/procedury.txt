@@ -1,0 +1,126 @@
+CREATE OR REPLACE PROCEDURE dodaj_gre(
+    p_tytul IN VARCHAR2,
+    p_gatunek IN VARCHAR2,
+    p_wydawca IN VARCHAR2,
+    p_liczba_graczy IN VARCHAR2,
+    p_czas_rozgrywki IN VARCHAR2,
+    p_status IN VARCHAR2 DEFAULT 'dostępna'
+) IS
+BEGIN
+    INSERT INTO Gry (tytul, gatunek, wydawca, liczba_graczy, czas_rozgrywki, status)
+    VALUES (p_tytul, p_gatunek, p_wydawca, p_liczba_graczy, p_czas_rozgrywki, p_status);
+    COMMIT;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE zaktualizuj_gre(
+    p_gra_id IN NUMBER,
+    p_tytul IN VARCHAR2,
+    p_gatunek IN VARCHAR2,
+    p_wydawca IN VARCHAR2,
+    p_liczba_graczy IN VARCHAR2,
+    p_czas_rozgrywki IN VARCHAR2,
+    p_status IN VARCHAR2
+) IS
+BEGIN
+    UPDATE Gry
+    SET tytul = p_tytul,
+        gatunek = p_gatunek,
+        wydawca = p_wydawca,
+        liczba_graczy = p_liczba_graczy,
+        czas_rozgrywki = p_czas_rozgrywki,
+        status = p_status
+    WHERE gra_id = p_gra_id;
+    COMMIT;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE usun_gre(p_gra_id IN NUMBER) IS
+BEGIN
+    INSERT INTO Gry_Archiwum (gra_id, tytul, gatunek, wydawca, liczba_graczy, czas_rozgrywki, status, data_operacji, typ_operacji)
+    SELECT gra_id, tytul, gatunek, wydawca, liczba_graczy, czas_rozgrywki, status, SYSDATE, 'usuniecie'
+    FROM Gry
+    WHERE gra_id = p_gra_id;
+
+    DELETE FROM Gry WHERE gra_id = p_gra_id;
+    COMMIT;
+END;
+/
+
+
+CREATE OR REPLACE PROCEDURE dodaj_wypozyczenie (
+    p_user_id IN NUMBER,
+    p_gra_id IN NUMBER,
+    p_data_od IN DATE DEFAULT SYSDATE,
+    p_data_do IN DATE DEFAULT NULL,
+    p_status IN VARCHAR2 DEFAULT 'wypozyczona'
+) AS
+BEGIN
+    INSERT INTO Wypozyczenia (user_id, gra_id, data_od, data_do, status)
+    VALUES (p_user_id, p_gra_id, p_data_od, p_data_do, p_status);
+    COMMIT;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE aktualizuj_wypozyczenie (
+    p_wypozyczenie_id IN NUMBER,
+    p_data_do IN DATE DEFAULT NULL,
+    p_status IN VARCHAR2 DEFAULT NULL
+) AS
+BEGIN
+    UPDATE Wypozyczenia
+    SET data_do = NVL(p_data_do, data_do),
+        status = NVL(p_status, status)
+    WHERE wypozyczenie_id = p_wypozyczenie_id;
+    COMMIT;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE usun_wypozyczenie(p_wypozyczenie_id IN NUMBER) IS
+BEGIN
+    INSERT INTO Wypozyczenia_Archiwum (wypozyczenie_id, user_id, gra_id, data_od, data_do, status, data_operacji)
+    SELECT wypozyczenie_id, user_id, gra_id, data_od, data_do, status, SYSDATE
+    FROM Wypozyczenia
+    WHERE wypozyczenie_id = p_wypozyczenie_id;
+
+    DELETE FROM Wypozyczenia WHERE wypozyczenie_id = p_wypozyczenie_id;
+    COMMIT;
+END;
+/
+
+
+CREATE OR REPLACE PROCEDURE dodaj_uzytkownika (
+    p_imie IN VARCHAR2,
+    p_nazwisko IN VARCHAR2,
+    p_email IN VARCHAR2,
+    p_nr_telefonu IN VARCHAR2
+) AS
+BEGIN
+    INSERT INTO Uzytkownicy (imie, nazwisko, email, nr_telefonu)
+    VALUES (p_imie, p_nazwisko, p_email, p_nr_telefonu);
+    COMMIT;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE aktualizuj_uzytkownika (
+    p_user_id IN NUMBER,
+    p_email IN VARCHAR2 DEFAULT NULL,
+    p_nr_telefonu IN VARCHAR2 DEFAULT NULL
+) AS
+BEGIN
+    UPDATE Uzytkownicy
+    SET email = NVL(p_email, email),
+        nr_telefonu = NVL(p_nr_telefonu, nr_telefonu)
+    WHERE user_id = p_user_id;
+    COMMIT;
+END;
+/
+
+
+#i testy jakieś takie na przykład
+EXEC dodaj_uzytkownika('Jan', 'Kowalski', 'jan.kowalski@example.com', '123456789');
+EXEC dodaj_wypozyczenie(2, 1, '2024-11-02', '2024-11-30', 'wypozyczona');
+EXEC usun_gre(27);
+EXEC usun_wypozyczenie(9);
+
+
